@@ -19,6 +19,13 @@ LABEL io.openshift.expose-services=""
 
 USER 10001
 
+# TODO: Rename completions to bashrc extension or something
+ENV COMPLETIONS=/home/user/.bash_completions.sh
+RUN touch $COMPLETIONS
+
+# Ensure .bashrc gets bash completions
+RUN echo "source $COMPLETIONS" >> /home/user/.bashrc
+
 # Java
 RUN curl -fsSL "https://get.sdkman.io" | bash \
     && bash -c ". /home/user/.sdkman/bin/sdkman-init.sh \
@@ -65,7 +72,8 @@ ENV NVM_DIR="/home/user/.nvm"
 ENV NODEJS_VERSION=16.14.0
 ENV NODEJS_12_VERSION=12.22.10
 ENV NODEJS_14_VERSION=14.19.0
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+RUN PROFILE=${COMPLETIONS} bash -c 'curl -o-  https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash'
+#RUN export PROFILE=${COMPLETIONS} curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 RUN source /home/user/.bashrc && nvm install v${NODEJS_VERSION} && nvm install v${NODEJS_14_VERSION} && nvm install v${NODEJS_12_VERSION} && nvm alias default v$NODEJS_VERSION && nvm use v$NODEJS_VERSION && npm install --global yarn@v1.22.17
 ENV PATH=$NVM_DIR/versions/node/v$NODEJS_VERSION/bin:$PATH
 ENV NODEJS_HOME_12=$NVM_DIR/versions/node/v$NODEJS_12_VERSION
@@ -159,7 +167,7 @@ RUN curl -L https://github.com/apache/camel-k/releases/download/v${KAMEL_VERSION
     && chmod +x /usr/local/bin/kamel
 
 # git completion
-RUN echo "source /usr/share/bash-completion/completions/git" >> /home/user/.bashrc
+RUN echo "source /usr/share/bash-completion/completions/git" >> $COMPLETIONS
 
 # Cloud
 
@@ -168,7 +176,7 @@ ENV OC_VERSION=4.6
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/${OC_VERSION}/linux/oc.tar.gz | tar -C /usr/local/bin -xz \
     && chmod +x /usr/local/bin/oc  \
     && oc completion bash > /usr/share/bash-completion/completions/oc \
-    && echo "source /usr/share/bash-completion/completions/oc" >> /home/user/.bashrc
+    && echo "source /usr/share/bash-completion/completions/oc" >> $COMPLETIONS
 
 ## podman buildah skopeo
 RUN dnf -y module enable container-tools:rhel8 && \ 
@@ -213,7 +221,7 @@ EOF2
 
 dnf install -y kubectl
 curl -sSL -o ~/.kubectl_aliases https://raw.githubusercontent.com/ahmetb/kubectl-alias/master/.kubectl_aliases
-echo '[ -f ~/.kubectl_aliases ] && source ~/.kubectl_aliases' >> /home/user/.bashrc
+echo '[ -f ~/.kubectl_aliases ] && source ~/.kubectl_aliases' >> $COMPLETIONS
 EOF
 
 ## shellcheck
@@ -253,7 +261,7 @@ sha256sum -c "${KREW_TGZ}.sha256" 2>&1 | grep OK
 
 tar -zxvf "${KREW_TGZ}"
 ./"krew-${KREW_ARCH}" install krew
-echo 'export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"' >> /home/user/.bashrc
+echo 'export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"' >> $COMPLETIONS
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 # kubens and kubectx
 kubectl krew install ns
